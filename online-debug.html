@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
+	<title>Game with Debug Logger</title>
+	<script>
+		// 立即开始日志转发设置，确保捕获所有日志
+		(function() {
+			const originalConsole = {
+				log: console.log,
+				error: console.error,
+				warn: console.warn,
+				info: console.info,
+				debug: console.debug
+			};
+
+			function sendLogToMiniProgram(logEntry) {
+				if (typeof wx !== 'undefined' && wx.miniProgram) {
+					wx.miniProgram.postMessage({
+						data: logEntry
+					});
+				}
+			}
+
+			// 重写console方法
+			['log', 'error', 'warn', 'info', 'debug'].forEach(method => {
+				console[method] = function(...args) {
+					originalConsole[method].apply(console, args);
+					
+					const logEntry = {
+						type: 'webview_log',
+						level: method,
+						message: args.map(arg => 
+							typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+						).join(' '),
+						timestamp: new Date().toISOString(),
+						url: window.location.href
+					};
+					
+					sendLogToMiniProgram(logEntry);
+				};
+			});
+
+			// 拦截错误
+			window.addEventListener('error', function(event) {
+				const errorLog = {
+					type: 'webview_log',
+					level: 'error',
+					message: `JavaScript Error: ${event.message} at ${event.filename}:${event.lineno}:${event.colno}`,
+					timestamp: new Date().toISOString(),
+					url: window.location.href,
+					stack: event.error ? event.error.stack : 'No stack trace available'
+				};
+				sendLogToMiniProgram(errorLog);
+			});
+
+			console.log('🔧 Debug logger initialized');
+		})();
+	</script>
+</head>
+<body>
+	<div style="padding: 20px; font-family: Arial, sans-serif;">
+		<h1>🎮 游戏调试页面</h1>
+		<p>这个页面会将所有日志转发到小程序控制台</p>
+		
+		<button onclick="testLogs()" style="padding: 10px 20px; margin: 10px; background: #007aff; color: white; border: none; border-radius: 5px;">
+			生成测试日志
+		</button>
+		
+		<button onclick="window.location.href='https://jiepengtan.github.io/miniprogram-web-game'" style="padding: 10px 20px; margin: 10px; background: #28a745; color: white; border: none; border-radius: 5px;">
+			跳转到实际游戏
+		</button>
+		
+		<div id="logs" style="margin-top: 20px; padding: 10px; background: #f8f9fa; border-radius: 5px; font-family: monospace; font-size: 14px;"></div>
+	</div>
+
+	<script>
+		const logsDiv = document.getElementById('logs');
+		
+		function addLogToPage(level, message) {
+			const logElement = document.createElement('div');
+			logElement.style.marginBottom = '5px';
+			logElement.style.color = getLogColor(level);
+			logElement.innerHTML = `[${new Date().toLocaleTimeString()}] [${level.toUpperCase()}] ${message}`;
+			logsDiv.appendChild(logElement);
+			logsDiv.scrollTop = logsDiv.scrollHeight;
+		}
+		
+		function getLogColor(level) {
+			switch(level) {
+				case 'error': return '#dc3545';
+				case 'warn': return '#ffc107';
+				case 'info': return '#17a2b8';
+				case 'debug': return '#6c757d';
+				default: return '#28a745';
+			}
+		}
+
+		function testLogs() {
+			console.log('🎮 开始测试日志功能');
+			addLogToPage('log', '🎮 开始测试日志功能');
+			
+			setTimeout(() => {
+				console.info('ℹ️ 这是一条信息日志');
+				addLogToPage('info', 'ℹ️ 这是一条信息日志');
+			}, 500);
+			
+			setTimeout(() => {
+				console.warn('⚠️ 这是一条警告日志');
+				addLogToPage('warn', '⚠️ 这是一条警告日志');
+			}, 1000);
+			
+			setTimeout(() => {
+				console.error('❌ 这是一条错误日志');
+				addLogToPage('error', '❌ 这是一条错误日志');
+			}, 1500);
+			
+			setTimeout(() => {
+				console.debug('🔧 这是一条调试日志');
+				addLogToPage('debug', '🔧 这是一条调试日志');
+			}, 2000);
+			
+			setTimeout(() => {
+				console.log('复杂对象:', {
+					user: 'test_user',
+					score: 1000,
+					items: ['sword', 'shield', 'potion']
+				});
+				addLogToPage('log', '复杂对象已发送到小程序');
+			}, 2500);
+		}
+
+		// 页面加载完成后自动执行一次测试
+		window.addEventListener('load', function() {
+			console.log('📱 调试页面加载完成');
+			addLogToPage('log', '📱 调试页面加载完成');
+			
+			// 获取URL参数
+			const urlParams = new URLSearchParams(window.location.search);
+			const params = {
+				userId: urlParams.get('userId') || 'default_user',
+				mode: urlParams.get('mode') || 'normal',
+				level: parseInt(urlParams.get('level')) || 1,
+				debug: urlParams.get('debug') || 'false'
+			};
+			
+			console.log('📊 接收到的参数:', params);
+			addLogToPage('log', `📊 接收到的参数: ${JSON.stringify(params)}`);
+			
+			// 自动生成一次测试日志
+			setTimeout(testLogs, 1000);
+		});
+	</script>
+</body>
+</html> 
