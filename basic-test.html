@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基础测试</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial;
+            background-color: #4CAF50;
+            color: white;
+            text-align: center;
+        }
+        
+        .container {
+            background-color: white;
+            color: black;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px auto;
+            max-width: 400px;
+        }
+        
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+        }
+        
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>微信小程序基础测试</h2>
+        
+        <div id="status" class="status">正在初始化...</div>
+        
+        <p><strong>当前时间：</strong><span id="time"></span></p>
+        <p><strong>页面URL：</strong><span id="url"></span></p>
+        
+        <button onclick="testFunction()">测试基础功能</button>
+        <button onclick="sendMessage()">测试消息</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        // 使用最基础的JavaScript语法
+        
+        function updateStatus(message, type) {
+            var statusEl = document.getElementById('status');
+            statusEl.innerHTML = message;
+            statusEl.className = 'status' + (type ? ' ' + type : '');
+        }
+        
+        function addResult(message, isSuccess) {
+            var resultsEl = document.getElementById('results');
+            var div = document.createElement('div');
+            div.className = 'status' + (isSuccess ? ' success' : ' error');
+            div.innerHTML = message;
+            resultsEl.appendChild(div);
+        }
+        
+        function testFunction() {
+            try {
+                // 测试最基本的操作
+                var test1 = 1 + 1;
+                var test2 = 'hello';
+                var test3 = [1, 2, 3];
+                
+                if (test1 === 2 && test2 === 'hello' && test3.length === 3) {
+                    addResult('✅ 基础JavaScript正常', true);
+                } else {
+                    addResult('❌ 基础JavaScript异常', false);
+                }
+                
+                // 测试DOM操作
+                var testDiv = document.createElement('div');
+                if (testDiv) {
+                    addResult('✅ DOM操作正常', true);
+                } else {
+                    addResult('❌ DOM操作异常', false);
+                }
+                
+            } catch (e) {
+                addResult('❌ 测试出错: ' + e.message, false);
+            }
+        }
+        
+        function sendMessage() {
+            try {
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'test',
+                        message: 'hello from webview'
+                    }, '*');
+                    addResult('✅ 消息发送成功', true);
+                } else {
+                    addResult('⚠️ 不在iframe中', true);
+                }
+            } catch (e) {
+                addResult('❌ 消息发送失败: ' + e.message, false);
+            }
+        }
+        
+        function initPage() {
+            try {
+                // 更新基本信息
+                document.getElementById('time').innerHTML = new Date().toString();
+                document.getElementById('url').innerHTML = window.location.href;
+                
+                updateStatus('页面加载完成', 'success');
+                
+                // 自动发送加载完成消息
+                setTimeout(function() {
+                    try {
+                        if (window.parent && window.parent !== window) {
+                            window.parent.postMessage({
+                                type: 'loaded',
+                                message: '页面已加载'
+                            }, '*');
+                        }
+                    } catch (e) {
+                        // 忽略错误
+                    }
+                }, 1000);
+                
+            } catch (e) {
+                updateStatus('初始化失败: ' + e.message, 'error');
+            }
+        }
+        
+        // 最简单的错误处理
+        window.onerror = function(message, source, lineno, colno, error) {
+            updateStatus('错误: ' + message, 'error');
+            return true;
+        };
+        
+        // 页面加载完成后初始化
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initPage);
+        } else {
+            initPage();
+        }
+    </script>
+</body>
+</html>
