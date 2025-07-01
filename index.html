@@ -412,33 +412,18 @@
             }
         }
         
-        // 错误处理
-        window.addEventListener('error', function(event) {
-            console.error('全局错误:', event.error);
-            document.body.innerHTML = '<div style="text-align:center;padding:50px;color:red;">游戏运行错误: ' + event.error.message + '</div>';
-        });
-        
         // 启动游戏
         window.addEventListener('load', () => {
-            try {
-                new SimpleGame();
-            } catch (error) {
-                console.error('游戏启动失败:', error);
-                document.body.innerHTML = '<div style="text-align:center;padding:50px;color:red;">游戏启动失败: ' + error.message + '</div>';
-            }
+            new SimpleGame();
         });
         
         // 向父窗口发送消息（用于小程序通信）
         window.addEventListener('load', () => {
-            try {
-                if (window.parent !== window) {
-                    window.parent.postMessage({
-                        type: 'gameLoaded',
-                        message: '游戏已加载完成'
-                    }, '*');
-                }
-            } catch (error) {
-                console.log('无法向父窗口发送消息:', error);
+            if (window.parent !== window) {
+                window.parent.postMessage({
+                    type: 'gameLoaded',
+                    message: '游戏已加载完成'
+                }, '*');
             }
         });
     </script>
