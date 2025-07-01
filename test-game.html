@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简单测试游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #gameContainer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            padding: 20px;
+        }
+
+        #gameCanvas {
+            border: 3px solid #fff;
+            border-radius: 10px;
+            background: #2c3e50;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-width: 100%;
+            max-height: 70vh;
+        }
+
+        #gameInfo {
+            color: white;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+
+        #score {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        #controls {
+            color: white;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .control-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .control-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-btn:hover {
+            background: rgba(255,255,255,0.4);
+            transform: scale(1.1);
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+
+        #gameOver {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: white;
+            text-align: center;
+        }
+
+        #restartBtn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background 0.3s;
+        }
+
+        #restartBtn:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="gameInfo">
+            <div id="score">分数: 0</div>
+            <div>使用方向键或按钮控制角色移动，收集金币！</div>
+        </div>
+        
+        <canvas id="gameCanvas" width="600" height="400"></canvas>
+        
+        <div class="control-buttons">
+            <button class="control-btn" id="upBtn">↑</button>
+        </div>
+        <div class="control-buttons">
+            <button class="control-btn" id="leftBtn">←</button>
+            <button class="control-btn" id="downBtn">↓</button>
+            <button class="control-btn" id="rightBtn">→</button>
+        </div>
+        
+        <div id="controls">
+            支持键盘方向键和触摸按钮控制
+        </div>
+    </div>
+
+    <div id="gameOver">
+        <h2>游戏结束!</h2>
+        <p id="finalScore">最终分数: 0</p>
+        <button id="restartBtn">重新开始</button>
+    </div>
+
+    <script>
+        class SimpleGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.score = 0;
+                this.gameRunning = true;
+                
+                // 玩家属性
+                this.player = {
+                    x: 50,
+                    y: 200,
+                    size: 20,
+                    speed: 4,
+                    color: '#FFD700'
+                };
+                
+                // 金币数组
+                this.coins = [];
+                this.coinCount = 15;
+                
+                // 障碍物数组
+                this.obstacles = [];
+                
+                this.init();
+                this.setupControls();
+                this.gameLoop();
+            }
+            
+            init() {
+                // 生成金币
+                this.generateCoins();
+                // 生成障碍物
+                this.generateObstacles();
+                
+                // 调整画布大小适配屏幕
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+            }
+            
+            resizeCanvas() {
+                const container = document.getElementById('gameContainer');
+                const maxWidth = Math.min(window.innerWidth * 0.9, 600);
+                const maxHeight = Math.min(window.innerHeight * 0.6, 400);
+                
+                this.canvas.width = maxWidth;
+                this.canvas.height = maxHeight;
+            }
+            
+            generateCoins() {
+                this.coins = [];
+                for (let i = 0; i < this.coinCount; i++) {
+                    this.coins.push({
+                        x: Math.random() * (this.canvas.width - 20) + 10,
+                        y: Math.random() * (this.canvas.height - 20) + 10,
+                        size: 10,
+                        collected: false
+                    });
+                }
+            }
+            
+            generateObstacles() {
+                this.obstacles = [
+                    { x: 150, y: 100, width: 20, height: 100 },
+                    { x: 300, y: 50, width: 100, height: 20 },
+                    { x: 450, y: 200, width: 20, height: 150 },
+                    { x: 200, y: 300, width: 150, height: 20 }
+                ];
+            }
+            
+            setupControls() {
+                // 键盘控制
+                document.addEventListener('keydown', (e) => {
+                    if (!this.gameRunning) return;
+                    
+                    switch(e.key) {
+                        case 'ArrowUp':
+                        case 'w':
+                        case 'W':
+                            this.movePlayer(0, -this.player.speed);
+                            e.preventDefault();
+                            break;
+                        case 'ArrowDown':
+                        case 's':
+                        case 'S':
+                            this.movePlayer(0, this.player.speed);
+                            e.preventDefault();
+                            break;
+                        case 'ArrowLeft':
+                        case 'a':
+                        case 'A':
+                            this.movePlayer(-this.player.speed, 0);
+                            e.preventDefault();
+                            break;
+                        case 'ArrowRight':
+                        case 'd':
+                        case 'D':
+                            this.movePlayer(this.player.speed, 0);
+                            e.preventDefault();
+                            break;
+                    }
+                });
+                
+                // 触摸按钮控制
+                document.getElementById('upBtn').addEventListener('click', () => {
+                    this.movePlayer(0, -this.player.speed * 2);
+                });
+                document.getElementById('downBtn').addEventListener('click', () => {
+                    this.movePlayer(0, this.player.speed * 2);
+                });
+                document.getElementById('leftBtn').addEventListener('click', () => {
+                    this.movePlayer(-this.player.speed * 2, 0);
+                });
+                document.getElementById('rightBtn').addEventListener('click', () => {
+                    this.movePlayer(this.player.speed * 2, 0);
+                });
+                
+                // 重新开始按钮
+                document.getElementById('restartBtn').addEventListener('click', () => {
+                    this.restart();
+                });
+            }
+            
+            movePlayer(dx, dy) {
+                const newX = this.player.x + dx;
+                const newY = this.player.y + dy;
+                
+                // 边界检查
+                if (newX < 0 || newX + this.player.size > this.canvas.width ||
+                    newY < 0 || newY + this.player.size > this.canvas.height) {
+                    return;
+                }
+                
+                // 障碍物碰撞检查
+                const playerRect = {
+                    x: newX,
+                    y: newY,
+                    width: this.player.size,
+                    height: this.player.size
+                };
+                
+                for (let obstacle of this.obstacles) {
+                    if (this.checkCollision(playerRect, obstacle)) {
+                        return;
+                    }
+                }
+                
+                this.player.x = newX;
+                this.player.y = newY;
+            }
+            
+            checkCollision(rect1, rect2) {
+                return rect1.x < rect2.x + rect2.width &&
+                       rect1.x + rect1.width > rect2.x &&
+                       rect1.y < rect2.y + rect2.height &&
+                       rect1.y + rect1.height > rect2.y;
+            }
+            
+            update() {
+                if (!this.gameRunning) return;
+                
+                // 检查金币收集
+                this.coins.forEach(coin => {
+                    if (!coin.collected) {
+                        const distance = Math.sqrt(
+                            Math.pow(this.player.x + this.player.size/2 - coin.x, 2) +
+                            Math.pow(this.player.y + this.player.size/2 - coin.y, 2)
+                        );
+                        
+                        if (distance < this.player.size/2 + coin.size) {
+                            coin.collected = true;
+                            this.score += 10;
+                            this.updateScore();
+                        }
+                    }
+                });
+                
+                // 检查游戏结束条件
+                if (this.coins.every(coin => coin.collected)) {
+                    this.endGame();
+                }
+            }
+            
+            render() {
+                // 清空画布
+                this.ctx.fillStyle = '#2c3e50';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 绘制网格背景
+                this.ctx.strokeStyle = '#34495e';
+                this.ctx.lineWidth = 1;
+                for (let x = 0; x < this.canvas.width; x += 50) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, 0);
+                    this.ctx.lineTo(x, this.canvas.height);
+                    this.ctx.stroke();
+                }
+                for (let y = 0; y < this.canvas.height; y += 50) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, y);
+                    this.ctx.lineTo(this.canvas.width, y);
+                    this.ctx.stroke();
+                }
+                
+                // 绘制障碍物
+                this.ctx.fillStyle = '#e74c3c';
+                this.obstacles.forEach(obstacle => {
+                    this.ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                });
+                
+                // 绘制金币
+                this.coins.forEach(coin => {
+                    if (!coin.collected) {
+                        this.ctx.fillStyle = '#f39c12';
+                        this.ctx.beginPath();
+                        this.ctx.arc(coin.x, coin.y, coin.size, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        
+                        // 金币闪烁效果
+                        this.ctx.fillStyle = '#fff';
+                        this.ctx.beginPath();
+                        this.ctx.arc(coin.x - 3, coin.y - 3, 3, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    }
+                });
+                
+                // 绘制玩家
+                this.ctx.fillStyle = this.player.color;
+                this.ctx.fillRect(this.player.x, this.player.y, this.player.size, this.player.size);
+                
+                // 添加玩家眼睛
+                this.ctx.fillStyle = '#000';
+                this.ctx.fillRect(this.player.x + 5, this.player.y + 5, 3, 3);
+                this.ctx.fillRect(this.player.x + 12, this.player.y + 5, 3, 3);
+            }
+            
+            updateScore() {
+                document.getElementById('score').textContent = `分数: ${this.score}`;
+            }
+            
+            endGame() {
+                this.gameRunning = false;
+                document.getElementById('finalScore').textContent = `最终分数: ${this.score}`;
+                document.getElementById('gameOver').style.display = 'flex';
+            }
+            
+            restart() {
+                this.score = 0;
+                this.gameRunning = true;
+                this.player.x = 50;
+                this.player.y = 200;
+                this.generateCoins();
+                this.updateScore();
+                document.getElementById('gameOver').style.display = 'none';
+            }
+            
+            gameLoop() {
+                this.update();
+                this.render();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+        }
+        
+        // 启动游戏
+        window.addEventListener('load', () => {
+            new SimpleGame();
+        });
+        
+        // 向父窗口发送消息（用于小程序通信）
+        window.addEventListener('load', () => {
+            if (window.parent !== window) {
+                window.parent.postMessage({
+                    type: 'gameLoaded',
+                    message: '游戏已加载完成'
+                }, '*');
+            }
+        });
+    </script>
+</body>
+</html> 
