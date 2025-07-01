@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport"
+		content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
+	<title>XGo Builder</title>
+	<style>
+		*:focus {
+			outline: none;
+			background-color: black;
+		}
+
+		#canvas,
+		#gameCanvas {
+			display: block;
+			margin: 0;
+			color: white;
+		}
+	</style>
+</head>
+
+<body>
+	<button id="startGameBtn">Start</button>
+	<button id="stopGameBtn">Stop</button>
+	<button id="startNewGameBtn">StartNew</button>
+	<progress id="progress-bar" value="0" max="1" style="display: none;"></progress>
+	<div id="tabs">
+		<div id="tab-loader">
+		</div>
+		<div id="tab-game" style="display: none;">
+		</div>
+	</div>
+	<iframe id="runnerFrame" src="runner.html" width="1600" height="700"></iframe>
+
+	<script>
+		let runnerWindow = {}
+		document.getElementById('startNewGameBtn').addEventListener('click', startNewGame);
+		document.getElementById('startGameBtn').addEventListener('click', startGame);
+		document.getElementById('stopGameBtn').addEventListener('click', stopGame);
+		runnerWindow = document.getElementById('runnerFrame').contentWindow;
+		function onProgress(value) {
+			document.getElementById('progress-bar').value = value;
+			if (value >= 1) {
+				document.getElementById('tab-game').style.display = 'block';
+				document.getElementById('tab-loader').style.display = 'none';
+			}
+			document.getElementById('progress-bar').style.display = value >= 1 ? 'none' : 'block';
+		}
+
+		async function startNewGame() {
+			await startProject('/diff.zip')
+		}
+
+		async function startGame() {
+			await startProject('/game.zip')
+		}
+
+		async function stopGame() {
+			runnerWindow.stopGame()
+		}
+
+		async function startProject(zipUrl) {
+			runnerWindow.addEventListener('onProgress', (event) => {
+				onProgress(event.detail.progress)
+			})
+			runnerWindow.onGameError(function (callback) {
+				console.error("onGameError", callback)
+			})
+			
+			let buffer = await (await (fetch(zipUrl))).arrayBuffer();
+			await runnerWindow.startGame(buffer);
+		}
+	</script>
+</body>
+
+</html>
