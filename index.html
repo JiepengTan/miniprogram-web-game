@@ -65,6 +65,92 @@
 		let isShowEditor = false;
 		let onGameErrorCallback = null;
 		let urlPrefix = "https://jiepengtan.github.io/miniprogram-web-game/";
+		
+		// 日志转发系统
+		const logQueue = [];
+		const originalConsole = {
+			log: console.log,
+			error: console.error,
+			warn: console.warn,
+			info: console.info,
+			debug: console.debug
+		};
+
+		// 重写console方法，拦截所有日志
+		function setupLogForwarding() {
+			['log', 'error', 'warn', 'info', 'debug'].forEach(method => {
+				console[method] = function(...args) {
+					// 调用原始的console方法
+					originalConsole[method].apply(console, args);
+					
+					// 格式化日志信息
+					const logEntry = {
+						type: 'webview_log',
+						level: method,
+						message: args.map(arg => 
+							typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+						).join(' '),
+						timestamp: new Date().toISOString(),
+						url: window.location.href
+					};
+					
+					// 发送到小程序
+					sendLogToMiniProgram(logEntry);
+				};
+			});
+			
+			// 拦截window错误
+			window.addEventListener('error', function(event) {
+				const errorLog = {
+					type: 'webview_log',
+					level: 'error',
+					message: `JavaScript Error: ${event.message} at ${event.filename}:${event.lineno}:${event.colno}`,
+					timestamp: new Date().toISOString(),
+					url: window.location.href,
+					stack: event.error ? event.error.stack : 'No stack trace available'
+				};
+				sendLogToMiniProgram(errorLog);
+			});
+			
+			// 拦截Promise未处理的rejection
+			window.addEventListener('unhandledrejection', function(event) {
+				const rejectionLog = {
+					type: 'webview_log',
+					level: 'error',
+					message: `Unhandled Promise Rejection: ${event.reason}`,
+					timestamp: new Date().toISOString(),
+					url: window.location.href
+				};
+				sendLogToMiniProgram(rejectionLog);
+			});
+		}
+
+		// 发送日志到小程序
+		function sendLogToMiniProgram(logEntry) {
+			if (typeof wx !== 'undefined' && wx.miniProgram) {
+				wx.miniProgram.postMessage({
+					data: logEntry
+				});
+			} else {
+				// 如果不在小程序环境中，暂存日志
+				logQueue.push(logEntry);
+			}
+		}
+
+		// 批量发送暂存的日志
+		function flushLogQueue() {
+			if (logQueue.length > 0 && typeof wx !== 'undefined' && wx.miniProgram) {
+				logQueue.forEach(log => {
+					wx.miniProgram.postMessage({
+						data: log
+					});
+				});
+				logQueue.length = 0; // 清空队列
+			}
+		}
+
+		// 立即设置日志转发
+		setupLogForwarding();
 
 		function onProgress(value) {
 			console.log("onProgress", value);
@@ -193,9 +279,32 @@
 			}
 		});
 
+		// 添加测试日志函数
+		function addTestLogs() {
+			console.log("🎮 游戏系统初始化完成");
+			console.info("ℹ️ 正在加载游戏资源...");
+			console.warn("⚠️ 这是一个警告消息示例");
+			console.error("❌ 这是一个错误消息示例");
+			console.debug("🔧 调试信息：系统状态正常");
+			
+			// 测试对象日志
+			console.log("游戏配置:", {
+				mode: "debug",
+				version: "1.0.0",
+				features: ["webview-logging", "message-passing"]
+			});
+		}
+
 		// DOM加载完成后开始检查脚本
 		document.addEventListener('DOMContentLoaded', function() {
 			console.log("DOM loaded, waiting for scripts...");
+			
+			// 延迟2秒添加测试日志，方便观察日志转发效果
+			setTimeout(() => {
+				console.log("🚀 开始添加测试日志...");
+				addTestLogs();
+			}, 2000);
+			
 			waitForScriptsAndStart();
 		});
 	</script>
