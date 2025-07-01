@@ -127,9 +127,31 @@
 			console.log("Game started successfully!");
 		}
 
+		// 解析URL参数
+		function getUrlParams() {
+			const urlParams = new URLSearchParams(window.location.search);
+			return {
+				userId: urlParams.get('userId') || 'default_user',
+				gameMode: urlParams.get('gameMode') || 'normal',
+				level: parseInt(urlParams.get('level')) || 1,
+				timestamp: urlParams.get('timestamp')
+			};
+		}
+
+		// 向小程序发送消息
+		function sendMessageToMiniProgram(type, data) {
+			if (typeof wx !== 'undefined' && wx.miniProgram) {
+				wx.miniProgram.postMessage({
+					data: { type, data }
+				});
+			}
+		}
+
 		// 设置错误回调
 		onGameError(function (callback) {
 			console.error("onGameError", callback);
+			// 向小程序发送错误消息
+			sendMessageToMiniProgram('gameError', { error: callback });
 		});
 
 		// 等待所有脚本加载完成后自动启动游戏
@@ -137,12 +159,39 @@
 			// 检查必要的全局变量是否已定义
 			if (typeof GameApp !== 'undefined' && typeof LOG_LEVEL_NONE !== 'undefined') {
 				console.log("Scripts loaded, starting game...");
+				
+				// 获取小程序传递的参数
+				const params = getUrlParams();
+				console.log("接收到的参数:", params);
+				
+				// 向小程序发送游戏开始消息
+				sendMessageToMiniProgram('gameStart', params);
+				
 				startGame();
 			} else {
 				console.log("Waiting for scripts to load...");
 				setTimeout(waitForScriptsAndStart, 100);
 			}
 		}
+
+		// 模拟游戏结束，发送结果给小程序
+		function gameEnd(score, level) {
+			const result = {
+				score: score,
+				level: level,
+				playTime: Date.now() - (parseInt(getUrlParams().timestamp) || Date.now()),
+				userId: getUrlParams().userId
+			};
+			console.log("游戏结束，发送结果:", result);
+			sendMessageToMiniProgram('gameResult', result);
+		}
+
+		// 添加键盘事件监听，按ESC键模拟游戏结束
+		document.addEventListener('keydown', function(event) {
+			if (event.key === 'Escape') {
+				gameEnd(Math.floor(Math.random() * 1000), getUrlParams().level);
+			}
+		});
 
 		// DOM加载完成后开始检查脚本
 		document.addEventListener('DOMContentLoaded', function() {
