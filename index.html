@@ -64,7 +64,15 @@
 		let gameApp = null;
 		let isShowEditor = false;
 		let onGameErrorCallback = null;
-		let urlPrefix = "https://jiepengtan.github.io/miniprogram-web-game/";
+		// 检测当前环境，本地开发使用相对路径，线上使用绝对路径
+		let urlPrefix = "";
+		if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+			urlPrefix = ""; // 本地开发使用相对路径
+			console.log("🏠 检测到本地环境，使用本地资源");
+		} else {
+			urlPrefix = "https://jiepengtan.github.io/miniprogram-web-game/"; // 线上环境
+			console.log("🌐 检测到线上环境，使用远程资源");
+		}
 		
 		// 日志转发系统
 		const logQueue = [];
@@ -128,9 +136,13 @@
 		// 发送日志到小程序
 		function sendLogToMiniProgram(logEntry) {
 			if (typeof wx !== 'undefined' && wx.miniProgram) {
-				wx.miniProgram.postMessage({
-					data: logEntry
-				});
+				try {
+					wx.miniProgram.postMessage({
+						data: logEntry
+					});
+				} catch (error) {
+					logQueue.push(logEntry);
+				}
 			} else {
 				// 如果不在小程序环境中，暂存日志
 				logQueue.push(logEntry);
@@ -140,10 +152,14 @@
 		// 批量发送暂存的日志
 		function flushLogQueue() {
 			if (logQueue.length > 0 && typeof wx !== 'undefined' && wx.miniProgram) {
-				logQueue.forEach(log => {
-					wx.miniProgram.postMessage({
-						data: log
-					});
+				logQueue.forEach((log) => {
+					try {
+						wx.miniProgram.postMessage({
+							data: log
+						});
+					} catch (error) {
+						// 静默处理错误，避免无限递归
+					}
 				});
 				logQueue.length = 0; // 清空队列
 			}
@@ -167,25 +183,49 @@
 		}
 
 		async function startGame() {
-			await startProject(urlPrefix + 'game.zip');
+			originalConsole.log("🎮 开始启动游戏...");
+			originalConsole.log("📁 urlPrefix:", urlPrefix);
+			try {
+				await startProject(urlPrefix + 'game.zip');
+				originalConsole.log("✅ 游戏启动成功！");
+			} catch (error) {
+				originalConsole.error("❌ 游戏启动过程中出错:", error);
+				originalConsole.error("Stack trace:", error.stack);
+				throw error;
+			}
 		}
 
 
 		async function startProject(zipUrl) {
+			originalConsole.log("📦 开始启动项目:", zipUrl);
 			isShowEditor = false;
 			
 			// 准备游戏画布
+			originalConsole.log("🖼️ 准备游戏画布...");
 			const canvas = document.getElementById('game-canvas');
+			if (!canvas) {
+				throw new Error("找不到游戏画布元素 'game-canvas'");
+			}
 			canvas.width = window.innerWidth;
 			canvas.height = window.innerHeight;
+			originalConsole.log("画布尺寸:", canvas.width, "x", canvas.height);
 			
 			// 显示游戏画布，隐藏其他
 			document.getElementById('tab-game').style.display = 'block';
 			document.getElementById('tab-editor').style.display = 'none';
 			document.getElementById('tab-loader').style.display = 'none';
 			
-			console.log("Downloading game data...");
-			let buffer = await (await (fetch(zipUrl))).arrayBuffer();
+			originalConsole.log("📥 正在下载游戏数据:", zipUrl);
+			let buffer;
+			try {
+				const response = await fetch(zipUrl);
+				originalConsole.log("下载响应状态:", response.status, response.statusText);
+				buffer = await response.arrayBuffer();
+				originalConsole.log("✅ 游戏数据下载完成, 大小:", buffer.byteLength, "bytes");
+			} catch (error) {
+				originalConsole.error("❌ 下载游戏数据失败:", error);
+				throw error;
+			}
 			
 			const config = {
 				'projectName': "spx_game",
@@ -201,16 +241,25 @@
 				},
 				"onSpxReady": null,
 			};
+			originalConsole.log("⚙️ 游戏配置:", config);
 
 			if (gameApp != null) {
+				originalConsole.log("🛑 停止现有游戏实例...");
 				await gameApp.StopGame();
 			}
 
-			console.log("Starting game...");
-			// try install project and run game
-			gameApp = new GameApp(config);
-			await gameApp.RunGame();
-			console.log("Game started successfully!");
+			originalConsole.log("🚀 创建并启动游戏实例...");
+			try {
+				// try install project and run game
+				gameApp = new GameApp(config);
+				originalConsole.log("✅ GameApp实例创建成功");
+				await gameApp.RunGame();
+				originalConsole.log("✅ 游戏运行成功！");
+			} catch (error) {
+				originalConsole.error("❌ 游戏实例创建或运行失败:", error);
+				originalConsole.error("Stack trace:", error.stack);
+				throw error;
+			}
 		}
 
 		// 解析URL参数
@@ -235,7 +284,7 @@
 
 		// 设置错误回调
 		onGameError(function (callback) {
-			console.error("onGameError", callback);
+			originalConsole.error("onGameError", callback);
 			// 向小程序发送错误消息
 			sendMessageToMiniProgram('gameError', { error: callback });
 		});
@@ -243,19 +292,31 @@
 		// 等待所有脚本加载完成后自动启动游戏
 		function waitForScriptsAndStart() {
 			// 检查必要的全局变量是否已定义
+			originalConsole.log("🔍 检查脚本加载状态:");
+			originalConsole.log("  - GameApp:", typeof GameApp);
+			originalConsole.log("  - LOG_LEVEL_NONE:", typeof LOG_LEVEL_NONE, LOG_LEVEL_NONE);
+			originalConsole.log("  - Engine:", typeof Engine);
+			originalConsole.log("  - Go:", typeof Go);
+			originalConsole.log("  - GdspxFuncs:", typeof GdspxFuncs);
+			
 			if (typeof GameApp !== 'undefined' && typeof LOG_LEVEL_NONE !== 'undefined') {
-				console.log("Scripts loaded, starting game...");
+				originalConsole.log("✅ Scripts loaded, starting game...");
 				
 				// 获取小程序传递的参数
 				const params = getUrlParams();
-				console.log("接收到的参数:", params);
+				originalConsole.log("📋 接收到的参数:", params);
 				
 				// 向小程序发送游戏开始消息
 				sendMessageToMiniProgram('gameStart', params);
 				
-				startGame();
+				try {
+					startGame();
+				} catch (error) {
+					originalConsole.error("❌ 游戏启动失败:", error);
+					originalConsole.error("Stack trace:", error.stack);
+				}
 			} else {
-				console.log("Waiting for scripts to load...");
+				originalConsole.log("⏳ Waiting for scripts to load...");
 				setTimeout(waitForScriptsAndStart, 100);
 			}
 		}
@@ -268,7 +329,7 @@
 				playTime: Date.now() - (parseInt(getUrlParams().timestamp) || Date.now()),
 				userId: getUrlParams().userId
 			};
-			console.log("游戏结束，发送结果:", result);
+			originalConsole.log("游戏结束，发送结果:", result);
 			sendMessageToMiniProgram('gameResult', result);
 		}
 
@@ -295,13 +356,54 @@
 			});
 		}
 
+		// 检查微信小程序环境
+		function checkWxEnvironment() {
+			if (typeof wx !== 'undefined' && wx.miniProgram) {
+				// 立即发送一条测试消息
+				const testMessage = {
+					type: 'webview_log',
+					level: 'info',
+					message: '🎯 Web-view环境检测：日志转发系统已就绪',
+					timestamp: new Date().toISOString(),
+					url: window.location.href
+				};
+				sendLogToMiniProgram(testMessage);
+				
+				// 尝试发送暂存的日志
+				setTimeout(() => {
+					flushLogQueue();
+				}, 500);
+			}
+		}
+
+		// 定期检查并发送暂存日志
+		function startLogSendingInterval() {
+			// 每隔3秒尝试发送一次暂存日志
+			setInterval(() => {
+				if (logQueue.length > 0) {
+					flushLogQueue();
+				}
+			}, 3000);
+		}
+
 		// DOM加载完成后开始检查脚本
 		document.addEventListener('DOMContentLoaded', function() {
-			console.log("DOM loaded, waiting for scripts...");
+			originalConsole.log("DOM loaded, waiting for scripts...");
+			
+			// 立即检查微信环境
+			checkWxEnvironment();
+			
+			// 启动定期发送机制
+			startLogSendingInterval();
+			
+			// 延迟1秒再次检查微信环境（有时wx对象需要时间加载）
+			setTimeout(() => {
+				checkWxEnvironment();
+			}, 1000);
 			
 			// 延迟2秒添加测试日志，方便观察日志转发效果
 			setTimeout(() => {
-				console.log("🚀 开始添加测试日志...");
+				originalConsole.log("🚀 开始添加测试日志...");
 				addTestLogs();
 			}, 2000);
 			

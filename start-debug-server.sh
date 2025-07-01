@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 配置变量
-PORT=8080
+PORT=13687
 SERVER_DIR="/Users/tjp/projects/miniprogram/game_demo"
 PYTHON_CMD="python3"
 SERVER_SCRIPT="serve.py"
@@ -143,16 +143,28 @@ start_server() {
     echo -e "${YELLOW}按 Ctrl+C 停止服务器${NC}"
     echo ""
     
-    # 启动服务器
-    exec $PYTHON_CMD $SERVER_SCRIPT
+    # 启动服务器，传递端口参数
+    exec $PYTHON_CMD $SERVER_SCRIPT -p $PORT
 }
 
 # 信号处理函数
 cleanup() {
     echo ""
-    print_info "收到停止信号，正在关闭服务器..."
-    kill_existing_server
-    print_success "服务器已停止"
+    print_info "收到停止信号，正在优雅地关闭服务器..."
+    
+    # 给Python服务器一点时间自己处理信号
+    sleep 1
+    
+    # 检查是否还有服务在运行
+    local remaining_pids=$(lsof -ti:$PORT 2>/dev/null)
+    if [ -n "$remaining_pids" ]; then
+        print_warning "服务器仍在运行，正在强制停止..."
+        kill_existing_server
+    fi
+    
+    print_success "调试服务器已完全停止"
+    print_separator
+    echo -e "${GREEN}感谢使用小程序游戏调试服务器！${NC}"
     exit 0
 }
 
@@ -184,7 +196,7 @@ show_help() {
     echo ""
     echo "选项:"
     echo "  -h, --help     显示帮助信息"
-    echo "  -p, --port     指定端口号 (默认: 8080)"
+    echo "  -p, --port     指定端口号 (默认: 13687)"
     echo "  -d, --dir      指定服务器目录"
     echo ""
     echo "示例:"
