@@ -30,40 +30,7 @@
 			outline: none;
 		}
 
-		#controls {
-			position: fixed;
-			top: 10px;
-			left: 10px;
-			z-index: 1000;
-			display: flex;
-			gap: 10px;
-			background: rgba(0, 0, 0, 0.7);
-			padding: 10px;
-			border-radius: 5px;
-		}
 
-		#controls button {
-			padding: 8px 15px;
-			background: #007bff;
-			color: white;
-			border: none;
-			border-radius: 3px;
-			cursor: pointer;
-			font-size: 14px;
-		}
-
-		#controls button:hover {
-			background: #0056b3;
-		}
-
-		#progress-bar {
-			position: fixed;
-			top: 60px;
-			left: 10px;
-			right: 10px;
-			z-index: 1000;
-			height: 4px;
-		}
 
 		#tabs {
 			position: absolute;
@@ -97,6 +64,7 @@
 		let gameApp = null;
 		let isShowEditor = false;
 		let onGameErrorCallback = null;
+		let urlPrefix = "https://jiepengtan.github.io/miniprogram-web-game/";
 
 		function onProgress(value) {
 			console.log("onProgress", value);
@@ -113,25 +81,37 @@
 		}
 
 		async function startGame() {
-			await startProject('https://jiepengtan.github.io/miniprogram-web-game/game.zip');
+			await startProject(urlPrefix + 'game.zip');
 		}
 
 
 		async function startProject(zipUrl) {
 			isShowEditor = false;
+			
+			// 准备游戏画布
+			const canvas = document.getElementById('game-canvas');
+			canvas.width = window.innerWidth;
+			canvas.height = window.innerHeight;
+			
+			// 显示游戏画布，隐藏其他
+			document.getElementById('tab-game').style.display = 'block';
+			document.getElementById('tab-editor').style.display = 'none';
+			document.getElementById('tab-loader').style.display = 'none';
+			
+			console.log("Downloading game data...");
 			let buffer = await (await (fetch(zipUrl))).arrayBuffer();
 			
 			const config = {
 				'projectName': "spx_game",
 				'onProgress': onProgress,
-				"gameCanvas": document.getElementById('game-canvas'),
+				"gameCanvas": canvas,
 				"projectData": new Uint8Array(buffer),
 				"logLevel": LOG_LEVEL_NONE,
 				"assetURLs": {
-					"engine.zip": "https://jiepengtan.github.io/miniprogram-web-game/engine.zip",
-					"game.zip": "https://jiepengtan.github.io/miniprogram-web-game/game.zip",
-					"gdspx.wasm": "https://jiepengtan.github.io/miniprogram-web-game/gdspx.wasm",
-					"engine.wasm": "https://jiepengtan.github.io/miniprogram-web-game/engine.wasm",
+					"engine.zip": urlPrefix + "engine.zip",
+					"game.zip": urlPrefix + "game.zip",
+					"gdspx.wasm": urlPrefix + "gdspx.wasm",
+					"engine.wasm": urlPrefix + "engine.wasm",
 				},
 				"onSpxReady": null,
 			};
@@ -140,26 +120,34 @@
 				await gameApp.StopGame();
 			}
 
+			console.log("Starting game...");
 			// try install project and run game
 			gameApp = new GameApp(config);
 			await gameApp.RunGame();
+			console.log("Game started successfully!");
 		}
-
-		// 添加事件监听器
-		document.getElementById('startNewGameBtn').addEventListener('click', startNewGame);
-		document.getElementById('startGameBtn').addEventListener('click', startGame);
-		document.getElementById('stopGameBtn').addEventListener('click', stopGame);
 
 		// 设置错误回调
 		onGameError(function (callback) {
 			console.error("onGameError", callback);
 		});
 
-		// 页面加载完成后自动启动游戏
-		window.addEventListener('load', function() {
-			console.log("window.addEventListener load");
-			// 延迟一点时间确保所有脚本都已加载
-			setTimeout(startGame, 1000);
+		// 等待所有脚本加载完成后自动启动游戏
+		function waitForScriptsAndStart() {
+			// 检查必要的全局变量是否已定义
+			if (typeof GameApp !== 'undefined' && typeof LOG_LEVEL_NONE !== 'undefined') {
+				console.log("Scripts loaded, starting game...");
+				startGame();
+			} else {
+				console.log("Waiting for scripts to load...");
+				setTimeout(waitForScriptsAndStart, 100);
+			}
+		}
+
+		// DOM加载完成后开始检查脚本
+		document.addEventListener('DOMContentLoaded', function() {
+			console.log("DOM loaded, waiting for scripts...");
+			waitForScriptsAndStart();
 		});
 	</script>
 </body>
