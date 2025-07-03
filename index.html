@@ -113,10 +113,10 @@
 			onGameErrorCallback = callback;
 		}
 
-		async function startGame() {
+		async function startGame(params) {
 			console.log("📁 urlPrefix:", urlPrefix);
 			try {
-				await startProject(urlPrefix + 'game.zip');
+				await startProject(urlPrefix + params.dataUrl);
 			} catch (error) {
 				console.error("Stack trace:", error.stack);
 				throw error;
@@ -157,9 +157,8 @@
 				"logLevel": LOG_LEVEL_NONE,
 				"assetURLs": {
 					"engine.zip": urlPrefix + "engine.zip",
-					"game.zip": urlPrefix + "game.zip",
-					"gdspx.wasm": urlPrefix + "gdspx.wasm",
-					"engine.wasm": urlPrefix + "engine.wasm",
+					"gdspx.wasm": urlPrefix + "gdspx.wasm.br",
+					"engine.wasm": urlPrefix + "engine.wasm.br",
 				},
 				"onSpxReady": null,
 			};
@@ -183,7 +182,7 @@
 			const urlParams = new URLSearchParams(window.location.search);
 			return {
 				userId: urlParams.get('userId') || 'default_user',
-				gameDataUrl: urlParams.get('gameDataUrl') || 'game.zip',
+				dataUrl: urlParams.get('dataUrl') || 'game.zip',
 				level: parseInt(urlParams.get('level')) || 1
 			};
 		}
@@ -208,7 +207,7 @@
 		function waitForScriptsAndStart() {
 			const params = getUrlParams();
 			console.log("📋 Received parameters:", params);
-			startGame();
+			startGame(params);
 		}
 
 		// Start checking scripts after DOM is loaded
