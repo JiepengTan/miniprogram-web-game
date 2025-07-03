@@ -64,22 +64,22 @@
 		let gameApp = null;
 		let isShowEditor = false;
 		let onGameErrorCallback = null;
-		// 检测当前环境，本地开发使用相对路径，线上使用绝对路径
+		// Detect current environment, use relative path for local development, absolute path for production
 		let urlPrefix = "";
 		if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-			urlPrefix = ""; // 本地开发使用相对路径
-			console.log("🏠 检测到本地环境，使用本地资源");
+			urlPrefix = ""; // Use relative path for local development
+			console.log("🏠 Local environment detected, using local resources");
 		} else {
-			urlPrefix = "https://jiepengtan.github.io/miniprogram-web-game/"; // 线上环境
-			console.log("🌐 检测到线上环境，使用远程资源");
+			urlPrefix = "https://jiepengtan.github.io/miniprogram-web-game/"; // Production environment
+			console.log("🌐 Production environment detected, using remote resources");
 		}
 		
 
-		// 批量发送暂存的日志
+		// Batch send cached logs
 		function flushLogQueue() {
-			console.log("🔄 尝试发送暂存日志，队列长度:", logQueue.length);
+			console.log("🔄 Attempting to send cached logs, queue length:", logQueue.length);
 			if (logQueue.length > 0 && typeof wx !== 'undefined' && wx.miniProgram && wx.miniProgram.postMessage) {
-				console.log("✅ 开始发送暂存日志");
+				console.log("✅ Starting to send cached logs");
 				const successCount = logQueue.filter((log) => {
 					try {
 						wx.miniProgram.postMessage({
@@ -87,15 +87,15 @@
 						});
 						return true;
 					} catch (error) {
-						console.error("❌ 发送暂存日志失败:", error);
+						console.error("❌ Failed to send cached log:", error);
 						return false;
 					}
 				}).length;
 				
-				console.log(`✅ 成功发送 ${successCount}/${logQueue.length} 条暂存日志`);
-				logQueue.length = 0; // 清空队列
+				console.log(`✅ Successfully sent ${successCount}/${logQueue.length} cached logs`);
+				logQueue.length = 0; // Clear queue
 			} else {
-				console.log("⚠️ 微信环境不可用，保留暂存日志");
+				console.log("⚠️ WeChat environment unavailable, keeping cached logs");
 			}
 		}
 
@@ -127,16 +127,16 @@
 		async function startProject(zipUrl) {
 			isShowEditor = false;
 			
-			// 准备游戏画布
+			// Prepare game canvas
 			const canvas = document.getElementById('game-canvas');
 			if (!canvas) {
-				throw new Error("找不到游戏画布元素 'game-canvas'");
+				throw new Error("Cannot find game canvas element 'game-canvas'");
 			}
 			canvas.width = window.innerWidth;
 			canvas.height = window.innerHeight;
-			console.log("画布尺寸:", canvas.width, "x", canvas.height);
+			console.log("Canvas size:", canvas.width, "x", canvas.height);
 			
-			// 显示游戏画布，隐藏其他
+			// Show game canvas, hide others
 			document.getElementById('tab-game').style.display = 'block';
 			document.getElementById('tab-editor').style.display = 'none';
 			document.getElementById('tab-loader').style.display = 'none';
@@ -169,7 +169,7 @@
 			}
 
 			try {
-				// try install project and run game
+				// Try to install project and run game
 				gameApp = new GameApp(config);
 				await gameApp.RunGame();
 			} catch (error) {
@@ -178,7 +178,7 @@
 			}
 		}
 
-		// 解析URL参数
+		// Parse URL parameters
 		function getUrlParams() {
 			const urlParams = new URLSearchParams(window.location.search);
 			return {
@@ -188,7 +188,7 @@
 			};
 		}
 
-		// 向小程序发送消息
+		// Send message to mini program
 		function sendMessageToMiniProgram(type, data) {
 			if (typeof wx !== 'undefined' && wx.miniProgram) {
 				wx.miniProgram.postMessage({
@@ -197,21 +197,21 @@
 			}
 		}
 
-		// 设置错误回调
+		// Set error callback
 		onGameError(function (callback) {
 			console.error("onGameError", callback);
-			// 向小程序发送错误消息
+			// Send error message to mini program
 			sendMessageToMiniProgram('gameError', { error: callback });
 		});
 
-		// 等待所有脚本加载完成后自动启动游戏
+		// Wait for all scripts to load and automatically start the game
 		function waitForScriptsAndStart() {
 			const params = getUrlParams();
-			console.log("📋 接收到的参数:", params);
+			console.log("📋 Received parameters:", params);
 			startGame();
 		}
 
-		// DOM加载完成后开始检查脚本
+		// Start checking scripts after DOM is loaded
 		document.addEventListener('DOMContentLoaded', function() {
 			console.log("DOM loaded, waiting for scripts...");
 			waitForScriptsAndStart();
