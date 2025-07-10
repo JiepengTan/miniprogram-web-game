@@ -27,7 +27,6 @@ class GameApp {
         };
         this.logicPromise = Promise.resolve();
         this.curProjectHash = ''
-        var EnginePackMode = "miniprogram"
         // web worker mode
         this.workerMode = EnginePackMode == "worker"
         this.minigameMode = EnginePackMode == "minigame"
@@ -44,6 +43,7 @@ class GameApp {
         this.webPersistentPath = '/home/web_user';
         this.projectInstallName = config.projectName || "Game";
         this.debugInfo = "";
+        console.log("GameApp constructor-------------->")
 
     }
     logVerbose(...args) {
@@ -607,17 +607,9 @@ class GameApp {
                 await this.setCache(this.getEngineHashKey(assetName), curHash);
                 return curData;
             } else {
-                this.logVerbose("Load cached engine asset:", assetName);
-                this.debugInfo += `Load cached engine asset: ${assetName}\n`;
-                let curData = await this.getCache(this.getEngineDataKey(assetName));
-                if (curData == undefined){
-                    console.log("redownload datas",assetName)
-                    this.debugInfo += "redownload datas" + assetName
-                    curData = await (await fetch(url)).arrayBuffer();
-                    console.log("curData ",curData)
-                    await this.setCache(this.getEngineDataKey(assetName), curData);
-                    await this.setCache(this.getEngineHashKey(assetName), curHash);
-                }
+                const curData = await this.getCache(this.getEngineDataKey(assetName));
+                this.logVerbose("Load cached engine asset:", assetName, curData);
+                this.debugInfo += `Load cached engine asset222: ${assetName}\n, ${curData.byteLength}`;
                 return curData;
             }
         } catch (error) {
