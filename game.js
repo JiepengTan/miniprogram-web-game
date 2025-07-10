@@ -27,7 +27,7 @@ class GameApp {
         };
         this.logicPromise = Promise.resolve();
         this.curProjectHash = ''
-        EnginePackMode = "miniprogram"
+        var EnginePackMode = "miniprogram"
         // web worker mode
         this.workerMode = EnginePackMode == "worker"
         this.minigameMode = EnginePackMode == "minigame"
