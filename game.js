@@ -614,6 +614,7 @@ class GameApp {
                     console.log("redownload datas",assetName)
                     this.debugInfo += "redownload datas" + assetName
                     curData = await (await fetch(url)).arrayBuffer();
+                    console.log("curData ",curData)
                     await this.setCache(this.getEngineDataKey(assetName), curData);
                     await this.setCache(this.getEngineHashKey(assetName), curHash);
                 }
