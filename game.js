@@ -609,7 +609,14 @@ class GameApp {
             } else {
                 this.logVerbose("Load cached engine asset:", assetName);
                 this.debugInfo += `Load cached engine asset: ${assetName}\n`;
-                const curData = await this.getCache(this.getEngineDataKey(assetName));
+                let curData = await this.getCache(this.getEngineDataKey(assetName));
+                if (curData == undefined){
+                    console.log("redownload datas",assetName)
+                    this.debugInfo += "redownload datas" + assetName
+                    curData = await (await fetch(url));
+                    await this.setCache(this.getEngineDataKey(assetName), curData);
+                    await this.setCache(this.getEngineHashKey(assetName), curHash);
+                }
                 return curData;
             }
         } catch (error) {
