@@ -42,6 +42,7 @@ class GameApp {
         this.tempZipPath = '/tmp/preload.zip';
         this.webPersistentPath = '/home/web_user';
         this.projectInstallName = config.projectName || "Game";
+        this.debugInfo = "";
 
     }
     logVerbose(...args) {
@@ -599,12 +600,14 @@ class GameApp {
 
             if (!isCacheValid) {
                 this.logVerbose("Download engine asset:", assetName, url);
+                this.debugInfo += `Download engine asset: ${assetName} ${url}\n`;
                 const curData = await (await fetch(url));
                 await this.setCache(this.getEngineDataKey(assetName), curData);
                 await this.setCache(this.getEngineHashKey(assetName), curHash);
                 return curData;
             } else {
                 this.logVerbose("Load cached engine asset:", assetName);
+                this.debugInfo += `Load cached engine asset: ${assetName}\n`;
                 const curData = await this.getCache(this.getEngineDataKey(assetName));
                 return curData;
             }
