@@ -59,6 +59,7 @@
 	<script src="engine.js"></script>
 	<script src="wasm_exec.js"></script>
 	<script src="game.js"></script>
+	<script src="wxsdk.js"></script>
 	<script>
 		"use strict";
 		let gameApp = null;
@@ -73,7 +74,12 @@
 			urlPrefix = "https://jiepengtan.github.io/miniprogram-web-game/"; // Production environment
 			console.log("🌐 Production environment detected, using remote resources");
 		}
-		
+
+		if (typeof wx !== 'undefined' && wx.miniProgram) {
+			console.log("🔄 wx.miniProgram detected");
+		} else {
+			console.log("❌ wx.miniProgram not detected");
+		}
 
 		// Batch send cached logs
 		function flushLogQueue() {
@@ -154,7 +160,7 @@
 				'onProgress': onProgress,
 				"gameCanvas": canvas,
 				"projectData": new Uint8Array(buffer),
-				"logLevel": LOG_LEVEL_NONE,
+				"logLevel": LOG_LEVEL_VERBOSE,
 				"assetURLs": {
 					"engine.zip": urlPrefix + "engine.zip",
 					"gdspx.wasm": urlPrefix + "gdspx.wasm",
@@ -190,6 +196,7 @@
 		// Send message to mini program
 		function sendMessageToMiniProgram(type, data) {
 			if (typeof wx !== 'undefined' && wx.miniProgram) {
+				console.log("sendMessageToMiniProgram", type, data);
 				wx.miniProgram.postMessage({
 					data: { type, data }
 				});
@@ -206,7 +213,11 @@
 		// Wait for all scripts to load and automatically start the game
 		function waitForScriptsAndStart() {
 			const params = getUrlParams();
-			console.log("📋 Received parameters:", params);
+			console.log("📋 Received parameters:1111", params);
+			sendMessageToMiniProgram(
+				'web-reply',
+				 '网页已收到消息'
+			);
 			startGame(params);
 		}
 
@@ -215,6 +226,16 @@
 			console.log("DOM loaded, waiting for scripts...");
 			waitForScriptsAndStart();
 		});
+
+		
+        window.addEventListener('message', function(event) {
+            log(`web-view 📨 收到消息: ${JSON.stringify(event.data)}`);
+			    // 可选：向小程序发送回复
+			window.parent.postMessage({
+				type: 'web-reply',
+				data: '网页已收到消息'
+			}, '*');
+        });
 	</script>
 </body>
 
